@@ -1,0 +1,424 @@
+.text
+.protected  _Z21gemm_mmac_v4_2col_optPKtPKfPfiii
+.globl  _Z21gemm_mmac_v4_2col_optPKtPKfPfiii
+.p2align	8
+.type _Z21gemm_mmac_v4_2col_optPKtPKfPfiii,@function
+_Z21gemm_mmac_v4_2col_optPKtPKfPfiii:
+	s_load_dwordx2 s[12:13], s[4:5], 0x10                      
+	s_load_dwordx4 s[8:11], s[4:5], 0x18                       
+	v_and_b32_e32 v13, 15, v0                                  
+	s_waitcnt lgkmcnt(0)                                       
+	s_lshl_b32 s11, s6, 5                                      
+	v_mov_b32_e32 v4, 0                                        
+	v_lshrrev_b32_e32 v11, 4, v0                               
+	v_lshl_or_b32 v12, s7, 4, v13                              
+	s_cmp_lt_i32 s10, 1                                        
+	v_mov_b32_e32 v3, v4                                       
+	v_mov_b32_e32 v2, v4                                       
+	v_mov_b32_e32 v1, v4                                       
+	v_mov_b32_e32 v8, v4                                       
+	v_mov_b32_e32 v7, v4                                       
+	v_mov_b32_e32 v6, v4                                       
+	v_mov_b32_e32 v5, v4                                       
+	s_cbranch_scc1 295                                         
+	v_mul_lo_u32 v1, v12, s10                                  
+	v_lshlrev_b32_e32 v15, 1, v11                              
+	s_load_dwordx4 s[4:7], s[4:5], 0x0                         
+	v_or_b32_e32 v3, 1, v15                                    
+	v_ashrrev_i32_e32 v2, 31, v1                               
+	v_alignbit_b32 v0, 0, v0, 4                                
+	v_mul_lo_u32 v16, s9, v3                                   
+	v_lshlrev_b32_e32 v3, 2, v0                                
+	v_lshlrev_b64 v[0:1], 1, v[1:2]                            
+	s_waitcnt lgkmcnt(0)                                       
+	v_mov_b32_e32 v2, s5                                       
+	v_add_co_u32_e32 v0, vcc, v3, v0                           
+	v_addc_co_u32_e32 v1, vcc, 0, v1, vcc                      
+	v_add_co_u32_e32 v0, vcc, s4, v0                           
+	v_addc_co_u32_e32 v1, vcc, v1, v2, vcc                     
+	v_add_co_u32_e32 v9, vcc, 32, v0                           
+	v_addc_co_u32_e32 v10, vcc, 0, v1, vcc                     
+	v_mov_b32_e32 v1, 0                                        
+	v_or_b32_e32 v14, s11, v13                                 
+	s_lshl_b32 s14, s9, 5                                      
+	s_mov_b32 s15, 0                                           
+	s_ashr_i32 s16, s11, 31                                    
+	v_add_co_u32_e32 v0, vcc, s11, v13                         
+	s_mov_b32 s17, 0                                           
+	v_mov_b32_e32 v2, v1                                       
+	v_mov_b32_e32 v3, v1                                       
+	v_mov_b32_e32 v4, v1                                       
+	v_mov_b32_e32 v5, v1                                       
+	v_mov_b32_e32 v6, v1                                       
+	v_mov_b32_e32 v7, v1                                       
+	v_mov_b32_e32 v8, v1                                       
+	v_add_u32_e32 v18, s15, v16                                
+	v_mov_b32_e32 v19, s16                                     
+	v_add3_u32 v17, v18, s11, v13                              
+	v_addc_co_u32_e64 v40, s[0:1], 0, v19, vcc                 
+	v_ashrrev_i32_e32 v21, 31, v18                             
+	v_add_co_u32_e64 v19, s[0:1], v18, v0                      
+	v_ashrrev_i32_e32 v18, 31, v17                             
+	v_add_u32_e32 v20, s17, v15                                
+	v_lshlrev_b64 v[17:18], 2, v[17:18]                        
+	v_mul_lo_u32 v22, v20, s9                                  
+	v_add_u32_e32 v23, 8, v20                                  
+	v_add_u32_e32 v24, 16, v20                                 
+	v_add_u32_e32 v25, 24, v20                                 
+	v_addc_co_u32_e64 v20, s[0:1], v21, v40, s[0:1]            
+	v_mov_b32_e32 v53, s7                                      
+	v_lshlrev_b64 v[19:20], 2, v[19:20]                        
+	v_add_co_u32_e64 v17, s[0:1], s6, v17                      
+	v_addc_co_u32_e64 v18, s[0:1], v53, v18, s[0:1]            
+	v_mul_lo_u32 v26, v23, s9                                  
+	v_mul_lo_u32 v28, v24, s9                                  
+	v_mul_lo_u32 v30, v25, s9                                  
+	v_add_co_u32_e64 v19, s[0:1], s6, v19                      
+	v_addc_co_u32_e64 v20, s[0:1], v53, v20, s[0:1]            
+	v_ashrrev_i32_e32 v24, 31, v22                             
+	v_add_co_u32_e64 v23, s[0:1], v22, v0                      
+	v_addc_co_u32_e64 v24, s[0:1], v24, v40, s[0:1]            
+	v_add_u32_e32 v21, v22, v14                                
+	v_ashrrev_i32_e32 v32, 31, v26                             
+	v_ashrrev_i32_e32 v34, 31, v28                             
+	v_add_co_u32_e64 v25, s[0:1], v28, v0                      
+	v_ashrrev_i32_e32 v37, 31, v30                             
+	v_add_co_u32_e64 v27, s[2:3], v30, v0                      
+	v_add_co_u32_e64 v35, s[4:5], v26, v0                      
+	v_add_u32_e32 v38, s9, v26                                 
+	v_add_u32_e32 v42, s9, v28                                 
+	v_add_u32_e32 v44, s9, v30                                 
+	v_ashrrev_i32_e32 v22, 31, v21                             
+	v_add_u32_e32 v29, v26, v14                                
+	v_add_u32_e32 v31, v28, v14                                
+	v_addc_co_u32_e64 v36, s[4:5], v32, v40, s[4:5]            
+	v_addc_co_u32_e64 v26, s[0:1], v34, v40, s[0:1]            
+	v_addc_co_u32_e64 v28, s[0:1], v37, v40, s[2:3]            
+	v_ashrrev_i32_e32 v46, 31, v38                             
+	v_ashrrev_i32_e32 v49, 31, v42                             
+	v_add_co_u32_e64 v37, s[0:1], v42, v0                      
+	v_ashrrev_i32_e32 v50, 31, v44                             
+	v_add_co_u32_e64 v39, s[2:3], v44, v0                      
+	v_lshlrev_b64 v[21:22], 2, v[21:22]                        
+	v_add_co_u32_e64 v47, s[4:5], v38, v0                      
+	v_add_u32_e32 v41, v38, v14                                
+	v_addc_co_u32_e64 v48, s[4:5], v46, v40, s[4:5]            
+	v_addc_co_u32_e64 v38, s[0:1], v49, v40, s[0:1]            
+	v_addc_co_u32_e64 v40, s[0:1], v50, v40, s[2:3]            
+	v_lshlrev_b64 v[23:24], 2, v[23:24]                        
+	v_add_co_u32_e64 v21, s[0:1], s6, v21                      
+	v_add_u32_e32 v33, v30, v14                                
+	v_ashrrev_i32_e32 v30, 31, v29                             
+	v_addc_co_u32_e64 v22, s[0:1], v53, v22, s[0:1]            
+	v_lshlrev_b64 v[29:30], 2, v[29:30]                        
+	v_add_co_u32_e64 v23, s[0:1], s6, v23                      
+	v_ashrrev_i32_e32 v32, 31, v31                             
+	v_addc_co_u32_e64 v24, s[0:1], v53, v24, s[0:1]            
+	v_lshlrev_b64 v[31:32], 2, v[31:32]                        
+	v_add_co_u32_e64 v29, s[0:1], s6, v29                      
+	v_ashrrev_i32_e32 v34, 31, v33                             
+	v_addc_co_u32_e64 v30, s[0:1], v53, v30, s[0:1]            
+	v_lshlrev_b64 v[33:34], 2, v[33:34]                        
+	v_add_co_u32_e64 v31, s[0:1], s6, v31                      
+	v_addc_co_u32_e64 v32, s[0:1], v53, v32, s[0:1]            
+	v_lshlrev_b64 v[35:36], 2, v[35:36]                        
+	v_add_co_u32_e64 v33, s[0:1], s6, v33                      
+	v_addc_co_u32_e64 v34, s[0:1], v53, v34, s[0:1]            
+	v_lshlrev_b64 v[25:26], 2, v[25:26]                        
+	v_add_co_u32_e64 v35, s[0:1], s6, v35                      
+	v_addc_co_u32_e64 v36, s[0:1], v53, v36, s[0:1]            
+	v_lshlrev_b64 v[27:28], 2, v[27:28]                        
+	v_add_co_u32_e64 v25, s[0:1], s6, v25                      
+	v_add_u32_e32 v43, v42, v14                                
+	v_ashrrev_i32_e32 v42, 31, v41                             
+	v_addc_co_u32_e64 v26, s[0:1], v53, v26, s[0:1]            
+	v_lshlrev_b64 v[41:42], 2, v[41:42]                        
+	v_add_co_u32_e64 v27, s[0:1], s6, v27                      
+	v_add_u32_e32 v45, v44, v14                                
+	v_ashrrev_i32_e32 v44, 31, v43                             
+	v_addc_co_u32_e64 v28, s[0:1], v53, v28, s[0:1]            
+	global_load_dword v57, v[9:10], off offset:-32             
+	global_load_dword v58, v[9:10], off offset:-16             
+	global_load_dword v59, v[9:10], off                        
+	global_load_dword v60, v[9:10], off offset:16              
+	v_lshlrev_b64 v[43:44], 2, v[43:44]                        
+	global_load_dword v49, v[23:24], off offset:64             
+	global_load_dword v50, v[19:20], off offset:64             
+	global_load_dword v51, v[21:22], off                       
+	global_load_dword v52, v[17:18], off                       
+	v_add_co_u32_e64 v17, s[0:1], s6, v41                      
+	v_ashrrev_i32_e32 v46, 31, v45                             
+	v_addc_co_u32_e64 v18, s[0:1], v53, v42, s[0:1]            
+	v_lshlrev_b64 v[45:46], 2, v[45:46]                        
+	v_add_co_u32_e64 v19, s[0:1], s6, v43                      
+	v_addc_co_u32_e64 v20, s[0:1], v53, v44, s[0:1]            
+	v_lshlrev_b64 v[47:48], 2, v[47:48]                        
+	v_add_co_u32_e64 v21, s[0:1], s6, v45                      
+	v_addc_co_u32_e64 v22, s[0:1], v53, v46, s[0:1]            
+	v_lshlrev_b64 v[37:38], 2, v[37:38]                        
+	v_add_co_u32_e64 v23, s[0:1], s6, v47                      
+	v_addc_co_u32_e64 v24, s[0:1], v53, v48, s[0:1]            
+	v_lshlrev_b64 v[39:40], 2, v[39:40]                        
+	v_add_co_u32_e64 v37, s[0:1], s6, v37                      
+	v_addc_co_u32_e64 v38, s[0:1], v53, v38, s[0:1]            
+	v_add_co_u32_e64 v39, s[0:1], s6, v39                      
+	v_addc_co_u32_e64 v40, s[0:1], v53, v40, s[0:1]            
+	global_load_dword v41, v[35:36], off offset:64             
+	global_load_dword v43, v[29:30], off                       
+	global_load_dword v44, v[17:18], off                       
+	global_load_dword v45, v[31:32], off                       
+	global_load_dword v46, v[19:20], off                       
+	global_load_dword v47, v[33:34], off                       
+	global_load_dword v48, v[21:22], off                       
+	global_load_dword v42, v[23:24], off offset:64             
+	global_load_dword v53, v[25:26], off offset:64             
+	global_load_dword v54, v[37:38], off offset:64             
+	global_load_dword v55, v[27:28], off offset:64             
+	global_load_dword v56, v[39:40], off offset:64             
+	s_add_i32 s17, s17, 32                                     
+	s_add_i32 s15, s15, s14                                    
+	v_add_co_u32_e64 v9, s[0:1], 64, v9                        
+	v_addc_co_u32_e64 v10, s[0:1], 0, v10, s[0:1]              
+	s_cmp_ge_i32 s17, s10                                      
+	s_waitcnt vmcnt(19)                                        
+	v_lshlrev_b32_e32 v17, 16, v57                             
+	v_and_b32_e32 v18, 0xffff0000, v57                         
+	s_waitcnt vmcnt(18)                                        
+	v_lshlrev_b32_e32 v19, 16, v58                             
+	v_and_b32_e32 v20, 0xffff0000, v58                         
+	s_waitcnt vmcnt(14)                                        
+	v_mmac_f32_16x16x8_tf32 v[5:8], v[17:18], v[49:50], v[5:8] 
+	s_waitcnt vmcnt(12)                                        
+	v_mmac_f32_16x16x8_tf32 v[1:4], v[17:18], v[51:52], v[1:4] 
+	v_lshlrev_b32_e32 v21, 16, v59                             
+	v_and_b32_e32 v22, 0xffff0000, v59                         
+	v_lshlrev_b32_e32 v23, 16, v60                             
+	v_and_b32_e32 v24, 0xffff0000, v60                         
+	s_waitcnt vmcnt(9)                                         
+	v_mmac_f32_16x16x8_tf32 v[1:4], v[19:20], v[43:44], v[1:4] 
+	s_waitcnt vmcnt(7)                                         
+	v_mmac_f32_16x16x8_tf32 v[1:4], v[21:22], v[45:46], v[1:4] 
+	s_waitcnt vmcnt(5)                                         
+	v_mmac_f32_16x16x8_tf32 v[1:4], v[23:24], v[47:48], v[1:4] 
+	s_waitcnt vmcnt(4)                                         
+	v_mmac_f32_16x16x8_tf32 v[5:8], v[19:20], v[41:42], v[5:8] 
+	s_waitcnt vmcnt(2)                                         
+	v_mmac_f32_16x16x8_tf32 v[5:8], v[21:22], v[53:54], v[5:8] 
+	s_waitcnt vmcnt(0)                                         
+	v_mmac_f32_16x16x8_tf32 v[5:8], v[23:24], v[55:56], v[5:8] 
+	s_cbranch_scc0 65277                                       
+	v_mul_lo_u32 v0, v12, s9                                   
+	v_add_u32_e32 v9, s11, v11                                 
+	v_cmp_gt_i32_e32 vcc, s8, v12                              
+	v_cmp_gt_i32_e64 s[0:1], s9, v9                            
+	s_and_b64 s[0:1], vcc, s[0:1]                              
+	s_and_saveexec_b64 s[2:3], s[0:1]                          
+	s_cbranch_execz 11                                         
+	v_add_u32_e32 v9, v0, v9                                   
+	v_ashrrev_i32_e32 v10, 31, v9                              
+	v_lshlrev_b64 v[9:10], 2, v[9:10]                          
+	v_mov_b32_e32 v12, s13                                     
+	v_add_co_u32_e64 v9, s[0:1], s12, v9                       
+	v_addc_co_u32_e64 v10, s[0:1], v12, v10, s[0:1]            
+	global_store_dword v[9:10], v1, off                        
+	s_or_b64 exec, exec, s[2:3]                                
+	s_add_i32 s4, s11, 16                                      
+	v_add_u32_e32 v1, s4, v11                                  
+	v_cmp_gt_i32_e64 s[0:1], s9, v1                            
+	s_and_b64 s[0:1], vcc, s[0:1]                              
+	s_and_saveexec_b64 s[2:3], s[0:1]                          
+	s_cbranch_execz 11                                         
+	v_add_u32_e32 v9, v0, v1                                   
+	v_ashrrev_i32_e32 v10, 31, v9                              
+	v_lshlrev_b64 v[9:10], 2, v[9:10]                          
+	v_mov_b32_e32 v1, s13                                      
+	v_add_co_u32_e64 v9, s[0:1], s12, v9                       
+	v_addc_co_u32_e64 v10, s[0:1], v1, v10, s[0:1]             
+	global_store_dword v[9:10], v5, off                        
+	s_or_b64 exec, exec, s[2:3]                                
+	v_or_b32_e32 v1, 4, v11                                    
+	v_add_u32_e32 v5, s11, v1                                  
+	v_cmp_gt_i32_e64 s[0:1], s9, v5                            
+	s_and_b64 s[0:1], vcc, s[0:1]                              
+	s_and_saveexec_b64 s[2:3], s[0:1]                          
+	s_cbranch_execz 11                                         
+	v_add_u32_e32 v9, v0, v5                                   
+	v_ashrrev_i32_e32 v10, 31, v9                              
+	v_lshlrev_b64 v[9:10], 2, v[9:10]                          
+	v_mov_b32_e32 v5, s13                                      
+	v_add_co_u32_e64 v9, s[0:1], s12, v9                       
+	v_addc_co_u32_e64 v10, s[0:1], v5, v10, s[0:1]             
+	global_store_dword v[9:10], v2, off                        
+	s_or_b64 exec, exec, s[2:3]                                
+	v_add_u32_e32 v1, s4, v1                                   
+	v_cmp_gt_i32_e64 s[0:1], s9, v1                            
+	s_and_b64 s[0:1], vcc, s[0:1]                              
+	s_and_saveexec_b64 s[2:3], s[0:1]                          
+	s_cbranch_execz 11                                         
+	v_add_u32_e32 v1, v0, v1                                   
+	v_ashrrev_i32_e32 v2, 31, v1                               
+	v_lshlrev_b64 v[1:2], 2, v[1:2]                            
+	v_mov_b32_e32 v5, s13                                      
+	v_add_co_u32_e64 v1, s[0:1], s12, v1                       
+	v_addc_co_u32_e64 v2, s[0:1], v5, v2, s[0:1]               
+	global_store_dword v[1:2], v6, off                         
+	s_or_b64 exec, exec, s[2:3]                                
+	v_or_b32_e32 v1, 8, v11                                    
+	v_add_u32_e32 v2, s11, v1                                  
+	v_cmp_gt_i32_e64 s[0:1], s9, v2                            
+	s_and_b64 s[0:1], vcc, s[0:1]                              
+	s_and_saveexec_b64 s[2:3], s[0:1]                          
+	s_cbranch_execz 11                                         
+	v_add_u32_e32 v5, v0, v2                                   
+	v_ashrrev_i32_e32 v6, 31, v5                               
+	v_lshlrev_b64 v[5:6], 2, v[5:6]                            
+	v_mov_b32_e32 v2, s13                                      
+	v_add_co_u32_e64 v5, s[0:1], s12, v5                       
+	v_addc_co_u32_e64 v6, s[0:1], v2, v6, s[0:1]               
+	global_store_dword v[5:6], v3, off                         
+	s_or_b64 exec, exec, s[2:3]                                
+	v_add_u32_e32 v1, s4, v1                                   
+	v_cmp_gt_i32_e64 s[0:1], s9, v1                            
+	s_and_b64 s[0:1], vcc, s[0:1]                              
+	s_and_saveexec_b64 s[2:3], s[0:1]                          
+	s_cbranch_execz 11                                         
+	v_add_u32_e32 v1, v0, v1                                   
+	v_ashrrev_i32_e32 v2, 31, v1                               
+	v_lshlrev_b64 v[1:2], 2, v[1:2]                            
+	v_mov_b32_e32 v3, s13                                      
+	v_add_co_u32_e64 v1, s[0:1], s12, v1                       
+	v_addc_co_u32_e64 v2, s[0:1], v3, v2, s[0:1]               
+	global_store_dword v[1:2], v7, off                         
+	s_or_b64 exec, exec, s[2:3]                                
+	v_or_b32_e32 v1, 12, v11                                   
+	v_add_u32_e32 v2, s11, v1                                  
+	v_cmp_gt_i32_e64 s[0:1], s9, v2                            
+	s_and_b64 s[0:1], vcc, s[0:1]                              
+	s_and_saveexec_b64 s[2:3], s[0:1]                          
+	s_cbranch_execz 11                                         
+	v_add_u32_e32 v2, v0, v2                                   
+	v_ashrrev_i32_e32 v3, 31, v2                               
+	v_lshlrev_b64 v[2:3], 2, v[2:3]                            
+	v_mov_b32_e32 v5, s13                                      
+	v_add_co_u32_e64 v2, s[0:1], s12, v2                       
+	v_addc_co_u32_e64 v3, s[0:1], v5, v3, s[0:1]               
+	global_store_dword v[2:3], v4, off                         
+	s_or_b64 exec, exec, s[2:3]                                
+	v_add_u32_e32 v1, s4, v1                                   
+	v_cmp_gt_i32_e64 s[0:1], s9, v1                            
+	s_and_b64 s[0:1], vcc, s[0:1]                              
+	s_and_saveexec_b64 s[2:3], s[0:1]                          
+	s_cbranch_execz 9                                          
+	v_add_u32_e32 v0, v0, v1                                   
+	v_ashrrev_i32_e32 v1, 31, v0                               
+	v_lshlrev_b64 v[0:1], 2, v[0:1]                            
+	v_mov_b32_e32 v2, s13                                      
+	v_add_co_u32_e32 v0, vcc, s12, v0                          
+	v_addc_co_u32_e32 v1, vcc, v2, v1, vcc                     
+	global_store_dword v[0:1], v8, off                         
+	s_endpgm                                                   
+
+
+
+.section .rodata,#alloc
+.p2align	6, 0x0
+.amdhsa_kernel _Z21gemm_mmac_v4_2col_optPKtPKfPfiii
+	.amdhsa_group_segment_fixed_size 0
+	.amdhsa_private_segment_fixed_size 0
+	.amdhsa_kernarg_size 36
+	.amdhsa_next_free_vgpr 64
+	.amdhsa_reserve_vcc 0
+	.amdhsa_reserve_flat_scratch 0
+	.amdhsa_reserve_xnack_mask 1
+	.amdhsa_next_free_sgpr 24
+	.amdhsa_float_round_mode_32 0
+	.amdhsa_float_round_mode_16_64 0
+	.amdhsa_float_denorm_mode_32 3
+	.amdhsa_float_denorm_mode_16_64 3
+	.amdhsa_dx10_clamp 1
+	.amdhsa_ieee_mode 1
+	.amdhsa_fp16_overflow 0
+	.amdhsa_system_sgpr_private_segment_wavefront_offset 0
+	.amdhsa_system_sgpr_workgroup_id_x 1
+	.amdhsa_system_sgpr_workgroup_id_y 1
+	.amdhsa_system_sgpr_workgroup_id_z 0
+	.amdhsa_system_sgpr_workgroup_info 0
+	.amdhsa_system_vgpr_workitem_id 0
+	.amdhsa_exception_fp_ieee_invalid_op 0
+	.amdhsa_exception_fp_denorm_src 0
+	.amdhsa_exception_fp_ieee_div_zero 0
+	.amdhsa_exception_fp_ieee_overflow 0
+	.amdhsa_exception_fp_ieee_underflow 0
+	.amdhsa_exception_fp_ieee_inexact 0
+	.amdhsa_exception_int_div_zero 0
+	.amdhsa_user_sgpr_private_segment_buffer 1
+	.amdhsa_user_sgpr_dispatch_ptr 0
+	.amdhsa_user_sgpr_queue_ptr 0
+	.amdhsa_user_sgpr_kernarg_segment_ptr 1
+	.amdhsa_user_sgpr_dispatch_id 0
+	.amdhsa_user_sgpr_flat_scratch_init 0
+	.amdhsa_user_sgpr_private_segment_size 0
+	.amdhsa_uses_dynamic_stack 0
+.end_amdhsa_kernel
+.text
+
+.Lfunc_end0:
+  .size _Z21gemm_mmac_v4_2col_optPKtPKfPfiii, .Lfunc_end0-_Z21gemm_mmac_v4_2col_optPKtPKfPfiii
+.section	.AMDGPU.csdata
+
+.ident  "clang version 17.0.0"
+.section	".note.GNU-stack"
+.addrsig
+.amdgpu_metadata
+---
+amdhsa.kernels:
+  - .args:
+      - .actual_access: read_only
+        .address_space: global
+        .offset: 0
+        .size: 8
+        .value_kind: global_buffer
+      - .actual_access: read_only
+        .address_space: global
+        .offset: 8
+        .size: 8
+        .value_kind: global_buffer
+      - .actual_access: write_only
+        .address_space: global
+        .offset: 16
+        .size: 8
+        .value_kind: global_buffer
+      - .offset: 24
+        .size: 4
+        .value_kind: by_value
+      - .offset: 28
+        .size: 4
+        .value_kind: by_value
+      - .offset: 32
+        .size: 4
+        .value_kind: by_value
+    .language_version:
+      - 2
+      - 0
+    .fp64_status: 0
+    .group_segment_fixed_size: 0
+    .kernarg_segment_align: 8
+    .kernarg_segment_size: 36
+    .language: OpenCL C
+    .max_flat_workgroup_size: 64
+    .name: _Z21gemm_mmac_v4_2col_optPKtPKfPfiii
+    .private_segment_fixed_size: 0
+    .sgpr_count: 22
+    .sgpr_spill_count: 0
+    .symbol: _Z21gemm_mmac_v4_2col_optPKtPKfPfiii.kd
+    .uniform_work_group_size: 1
+    .uses_dynamic_stack: false
+    .vgpr_count: 61
+    .vgpr_spill_count: 0
+    .wavefront_size: 64
+amdhsa.target:  amdgcn-amd-amdhsa--gfx936:sramecc+
+amdhsa.version:
+  - 1
+  - 2
+...
+.end_amdgpu_metadata

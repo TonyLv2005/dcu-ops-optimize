@@ -1,0 +1,11 @@
+*.o
+*.so
+*.hip
+*.a
+artifacts/
+pmc_results_*.csv
+pmc_results_*.txt
+__pycache__/
+*.whl
+*.egg-info/
+build/
