@@ -46,48 +46,99 @@ pytest -q tests/test_flash_attn.py::test_flash_attn_kvcache
 
 ## DeepGEMM 验证
 
-DeepGEMM 主要覆盖 MoE W8A8 路径：
+DeepGEMM 主要覆盖 MoE W8A8 路径，包含三类算子：
 
-- `m_grouped_w8a8_gemm_nt_masked`
-- `m_grouped_i8_gemm_nt_contiguous`
-- `m_grouped_w8a8_gemm_nt_masked_ll`
+| 算子 | 权重 layout | 适用场景 |
+|------|------------|----------|
+| `m_grouped_w8a8_gemm_nt_masked` | Marlin | prefill、大 batch decode |
+| `m_grouped_i8_gemm_nt_contiguous` | Marlin | prefill (EP dispatch 后连续 token) |
+| `m_grouped_w8a8_gemm_nt_masked_ll` | 6-D W6 | decode 小 batch / 小 M |
 
-标准 masked / contiguous：
+### 标准 masked / contiguous
 
 ```bash
 cd deepgemm/gemm_test
 
+# 精度
 python3 test_moe_deepgemm_w8a8.py precision
-python3 test_moe_deepgemm_w8a8.py performance
 python3 test_moe_deepgemm_w8a8.py contiguous_precision
-python3 test_moe_deepgemm_w8a8.py contiguous_performance
 python3 test_moe_deepgemm_w8a8.py contiguous_m_indices
+
+# 性能
+python3 test_moe_deepgemm_w8a8.py performance
+python3 test_moe_deepgemm_w8a8.py contiguous_performance
 ```
 
-低延迟 masked_ll：
+### 低延迟 masked_ll（decode 场景）
+
+masked_ll 面向 decode 阶段**每 expert 只分到少量 token** 的场景。经实测，在 `max_m ≤ 21`（即单 expert 最多 21 个 token）时，LL kernel 比标准 masked 有 1.01–1.41× 加速；`max_m ≥ 45` 后标准 masked 反超。对于 K 更小的 down GEMM（K=1536），LL 的优势区间更宽。
 
 ```bash
 cd deepgemm/gemm_test
 
+# LL 单独精度 + 性能
 python3 test_moe_deepgemm_w8a8_ll.py precision
 python3 test_moe_deepgemm_w8a8_ll.py performance
+
+# LL vs 标准 masked 对比（主力脚本）
+python3 test_ll_vs_masked.py compare       # 精度对比
+python3 test_ll_vs_masked.py performance   # 固定 M 性能对比
+python3 test_ll_vs_masked.py decode        # decode 分布模拟（B=1..32）
 ```
 
-默认覆盖的关键 shape：
+### 默认覆盖的 shape
 
 | 算子 | E | M | K | N | 说明 |
-| --- | ---: | --- | ---: | ---: | --- |
+|------|----:|----:|----:|----:|------|
 | masked | 256 / 32 | 8, 128, 1024 | 3072 | 3072 | 精度验证 |
 | contiguous | 256 / 32 | 8, 128, 1024 | 3072 | 3072 | 精度验证 |
-| masked_ll | 32 | 8, 128, 1024 | 3072 | 3072 | EP=8 |
-| masked_ll | 32 | 8, 128, 1024 | 3072 | 384 | EP=8 + TP=8 GEMM1 |
-| masked_ll | 32 | 8, 128, 1024 | 192 | 3072 | EP=8 + TP=8 GEMM2 |
+| masked_ll | 32 | 8, 128, 1024 | 3072 | 3072 | EP=8 gate+up |
+| masked_ll | 32 | 8, 128, 1024 | 1536 | 3072 | EP=8 down |
 
-通过标准：
+> **注意**：masked_ll 有严格的维度 allowlist — K ∈ {1536, 2048, 3072, 6144, 7168}、N ∈ {3072, 4096, 6144, 7168}、E ∈ {1, 16, 32}。不命中 allowlist 时 LL kernel 不做任何计算也不自动 fallback；此时应使用标准 masked。
 
-- precision case 输出 `Status: PASS`，cosine similarity 接近 `1.000000`。
-- performance case 正常输出 latency / throughput，无异常退出。
-- contiguous 的 `m_indices` case 中 valid region 与 padding 均为 `PASS`。
+### LL vs 标准 masked 性能对比
+
+以下为 LL kernel 相比标准 masked 有正向收益的场景（E=32, CU=128, gfx938）：
+
+**固定 M 对比 (K=N=3072, gate+up GEMM)**：
+
+| M | LL (ms) | masked (ms) | speedup | 结论 |
+|--:|--------:|------------:|--------:|------|
+| 8 | 0.307 | 0.342 | **1.11×** | LL 快 |
+| — | — | — | — | — |
+
+> M=128 以上时标准 masked 反超（M=128 时 masked 快 3.8×），因此 LL 仅推荐用于 decode 场景的**小 M 区间**。
+
+**decode 分布模拟 (K=N=3072, top_k=8)**：
+
+| B | max_m | speedup (E=32) | speedup (E=16) | 结论 |
+|--:|------:|---------------:|---------------:|------|
+| 1 | 1 | **1.39×** | **1.38×** | LL |
+| 4 | 2 | **1.28×** | **1.30×** | LL |
+| 8 | 4 | **1.14×** | **1.12×** | LL |
+| 16 | 8 | **1.12×** | **1.07×** | LL |
+| 32 | 13 | **1.13×** | 1.04 | LL |
+| 64 | 21 | 1.02 | 0.95 | 持平附近 |
+
+**down GEMM (K=1536, N=3072)** — LL 优势区间更宽：
+
+| B | max_m | speedup (E=32) |
+|--:|------:|---------------:|
+| 1 | 1 | **1.46×** |
+| 8 | 7 | **1.25×** |
+| 32 | 21 | **1.20×** |
+| 64 | 40 | **1.18×** |
+| 128 | 45 | **1.15×** |
+
+> down GEMM 的 K=1536 比 gate+up 的 K=3072 更小，标准 masked 的大 tile 优势更难发挥，因此 LL 的加速区间更宽。
+
+### 通过标准
+
+- precision case 输出 `Status: PASS`，cosine similarity 接近 `1.000000`
+- performance case 正常输出 latency / throughput，无异常退出
+- contiguous 的 `m_indices` case 中 valid region 与 padding 均为 `PASS`
+- `test_ll_vs_masked.py compare` 中 LL 和 masked 与 PyTorch ref 的 cosine similarity 均 ≥ 0.9999
 
 
 
