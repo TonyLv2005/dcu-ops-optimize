@@ -3864,6 +3864,7 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
             );
         }
 
+        #if 0
         if (tidx == 0 && blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 && masking_step == 0) {
             decltype(softmax) softmax_ref;
             decltype(softmax) softmax_fast;
@@ -3930,6 +3931,7 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
                 max_abs_diff
             );
         }
+        #endif
 
         Tensor rP = masking_step == 0
             ? softmax.template fast_softmax_rescale_o<Element, /*Is_first=*/true,  /*Check_inf=*/Is_causal || Is_local>(acc_s, acc_o, params.scale_softmax_log2)
