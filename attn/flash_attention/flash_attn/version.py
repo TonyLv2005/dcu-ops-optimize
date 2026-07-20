@@ -1,6 +1,6 @@
 version = '2.8.3'
-git_hash = 'e8ebdc7'
-git_branch = 'main'
+git_hash = 'c2a1b31'
+git_branch = 'master'
 abi = 'abi1'
 dtk = '2604'
 torch_version = '2.9'

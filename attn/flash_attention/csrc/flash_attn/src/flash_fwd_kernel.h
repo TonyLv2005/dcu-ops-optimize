@@ -340,7 +340,7 @@ inline __device__ void compute_attn_1rowblock(const Params &params, const int bi
             // isn't right and we get race conditions.
             // cute::cp_async_fence();
         }
-        
+
         masking_step == 0
             ? softmax.template softmax_rescale_o</*Is_first=*/true,  /*Check_inf=*/Is_causal || Is_local>(acc_s, acc_o, params.scale_softmax_log2)
             : softmax.template softmax_rescale_o</*Is_first=*/false, /*Check_inf=*/Is_causal || Is_local>(acc_s, acc_o, params.scale_softmax_log2);
@@ -1513,7 +1513,7 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64(const Params &params, 
         lse = softmax.template normalize_softmax_lse_with_sinks<Is_dropout>(
             acc_o, tSrS_aux, params.scale_softmax, params.scale_softmax_log2, params.rp_dropout);
     } else {
-        lse = softmax.template normalize_softmax_lse<Is_dropout>(
+        lse = softmax.template fast_normalize_softmax_lse<Element, Is_dropout>(
             acc_o, params.scale_softmax, params.rp_dropout);
     }
 
@@ -3546,9 +3546,7 @@ inline __device__ void compute_attn_1rowblock_16x64_dim96_prefetch(const Params 
             );
         }
 
-        softmax.template softmax_rescale_o</*Is_first=*/false, /*Check_inf=*/ Is_local>(acc_s, acc_o, params.scale_softmax_log2);
-
-        Tensor rP = flash::convert_type<Element>(acc_s);
+        Tensor rP = softmax.template fast_softmax_rescale_o<Element, /*Is_first=*/false, /*Check_inf=*/ Is_local>(acc_s, acc_o, params.scale_softmax_log2);
 
         {   // dropout
             const int wave_id = (tidx >> 6);
@@ -3754,12 +3752,9 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
     
     Tensor sK = make_tensor(make_smem_ptr(reinterpret_cast<Element *>(smem_)),
                             typename Kernel_traits::SmemLayoutK{});
-    Tensor sV0 = make_tensor(sK.data() + size(sK), typename Kernel_traits::SmemLayoutV{});
-    Tensor sV1 = make_tensor(sK.data() + size(sK) + size(sV0), typename Kernel_traits::SmemLayoutV{});
-    Tensor sVt0 = make_tensor(sV0.data(), typename Kernel_traits::SmemLayoutVtransposed{});
-    Tensor sVt1 = make_tensor(sV1.data(), typename Kernel_traits::SmemLayoutVtransposed{});
-    Tensor sVtSplit0 = make_tensor(sV0.data(), typename Kernel_traits::SmemLayoutVtransSplit{});
-    Tensor sVtSplit1 = make_tensor(sV1.data(), typename Kernel_traits::SmemLayoutVtransSplit{});
+    Tensor sV = make_tensor(sK.data() + size(sK), typename Kernel_traits::SmemLayoutV{});
+    Tensor sVt = make_tensor(sV.data(), typename Kernel_traits::SmemLayoutVtransposed{});
+    Tensor sVtSplit = make_tensor(sV.data(), typename Kernel_traits::SmemLayoutVtransSplit{});
 
     typename Kernel_traits::TiledMma16x64  tiled_mma;
     auto thr_mma = tiled_mma.get_thread_slice(tidx);
@@ -3767,8 +3762,7 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
     auto thr_mma_for_gemm1 = tiled_mma_for_gemm1.get_thread_slice(tidx);
     Tensor tGrQ  = thr_mma.partition_fragment_A(gQ);                           // (MMA,MMA_M,MMA_K)
     Tensor tSrK  = thr_mma.partition_fragment_B(gK);                           // (MMA,MMA_N,MMA_K)
-    Tensor tOrVt0 = thr_mma_for_gemm1.partition_fragment_B(sVt0);              // (MMA, MMA_K,MMA_N)
-    Tensor tOrVt1 = thr_mma_for_gemm1.partition_fragment_B(sVt1);              // (MMA, MMA_K,MMA_N)
+    Tensor tOrVt = thr_mma_for_gemm1.partition_fragment_B(sVt);                // (MMA, MMA_K,MMA_N)
 
     Tensor tSgS  = thr_mma.partition_C(gP);
 
@@ -3787,10 +3781,8 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
 
     auto smem_tiled_copy_V = make_tiled_copy_B(Copy_Atom<GFX928_DS_READ_DS_M32x16_B16, Element>{}, tiled_mma_for_gemm1);
     auto smem_thr_copy_V = smem_tiled_copy_V.get_thread_slice(tidx);
-    Tensor tOsVt8x64_0 = smem_thr_copy_V.partition_S(sVtSplit0);
-    Tensor tOsVt8x64_1 = smem_thr_copy_V.partition_S(sVtSplit1);
-    Tensor tOsVt0 = make_tensor(tOsVt8x64_0.data(), convert_layout_B_rowcol_<_16x64_64, kHeadDimV/32>(tOsVt8x64_0.layout()));
-    Tensor tOsVt1 = make_tensor(tOsVt8x64_1.data(), convert_layout_B_rowcol_<_16x64_64, kHeadDimV/32>(tOsVt8x64_1.layout()));
+    Tensor tOsVt8x64 = smem_thr_copy_V.partition_S(sVtSplit);
+    Tensor tOsVt = make_tensor(tOsVt8x64.data(), convert_layout_B_rowcol_<_16x64_64, kHeadDimV/32>(tOsVt8x64.layout()));
 
 
     //
@@ -3830,7 +3822,7 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
         : ((Is_even_MN && Is_causal) ? cute::ceil_div(kBlockM, kBlockN) : cute::ceil_div(kBlockM, kBlockN) + 1);
     
     constexpr int k0_loops = size<2>(tSsK);
-    constexpr int k1_loops = size<2>(tOsVt0);
+    constexpr int k1_loops = size<2>(tOsVt);
     static_assert(k0_loops == 2 && k1_loops == 4);
     #pragma unroll
     for (int i = 0; i < k0_loops; ++i) {
@@ -3838,18 +3830,8 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
     }
     #pragma unroll
     for (int i = 0; i < k1_loops; ++i) {
-        lds_direct_copy<Is_even_K, Is_even_MN, _16x64_64>(gV, sV0, i, params.v_row_stride, params.d, binfo.actual_seqlen_k - n_block * kBlockN);
+        lds_direct_copy<Is_even_K, Is_even_MN, _16x64_64>(gV, sV, i, params.v_row_stride, params.d, binfo.actual_seqlen_k - n_block * kBlockN);
     }
-
-    bool use_v0 = true;
-
-#define FLASH_DIM64_PREFETCH_V(BUF, G)                                                                    \
-    do {                                                                                                  \
-        lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(G, BUF, 0, params.v_row_stride, params.d); \
-        lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(G, BUF, 1, params.v_row_stride, params.d); \
-        lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(G, BUF, 2, params.v_row_stride, params.d); \
-        lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(G, BUF, 3, params.v_row_stride, params.d); \
-    } while (0)
 
 #if 1
     #pragma unroll
@@ -3881,31 +3863,77 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
                 acc_s, n_block * kBlockN, row_idx_offset_, (kNWarps << 4)
             );
         }
-        
-        masking_step == 0
-            ? softmax.template softmax_rescale_o</*Is_first=*/true,  /*Check_inf=*/Is_causal || Is_local>(acc_s, acc_o, params.scale_softmax_log2)
-            : softmax.template softmax_rescale_o</*Is_first=*/false, /*Check_inf=*/Is_causal || Is_local>(acc_s, acc_o, params.scale_softmax_log2);
 
-        // Convert acc_s from fp32 to fp16/bf16
-        Tensor rP = flash::convert_type<Element>(acc_s);
+        if (tidx == 0 && blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 && masking_step == 0) {
+            decltype(softmax) softmax_ref;
+            decltype(softmax) softmax_fast;
+            cute::copy(softmax.row_max, softmax_ref.row_max);
+            cute::copy(softmax.row_sum, softmax_ref.row_sum);
+            softmax_ref.skip_softmax_threshold = softmax.skip_softmax_threshold;
+            softmax_ref.total_blocks = softmax.total_blocks;
+            softmax_ref.skipped_blocks = softmax.skipped_blocks;
+            cute::copy(softmax.row_max, softmax_fast.row_max);
+            cute::copy(softmax.row_sum, softmax_fast.row_sum);
+            softmax_fast.skip_softmax_threshold = softmax.skip_softmax_threshold;
+            softmax_fast.total_blocks = softmax.total_blocks;
+            softmax_fast.skipped_blocks = softmax.skipped_blocks;
 
-        if (n_block > n_block_min) {
-            // Pull the next K tile forward so its latency overlaps the current softmax/dropout and V compute.
-            gK.data() = gK.data() + (-int(kBlockN * params.k_row_stride));
-            lds_direct_copy<Is_even_K>(gK, sK, 0, params.k_row_stride, params.d);
-            lds_direct_copy<Is_even_K>(gK, sK, 1, params.k_row_stride, params.d);
-        }
+            Tensor acc_s_ref = make_fragment_like(acc_s);
+            Tensor acc_o_ref = make_fragment_like(acc_o);
+            Tensor acc_s_fast = make_fragment_like(acc_s);
+            Tensor acc_o_fast = make_fragment_like(acc_o);
+            cute::copy(acc_s, acc_s_ref);
+            cute::copy(acc_o, acc_o_ref);
+            cute::copy(acc_s, acc_s_fast);
+            cute::copy(acc_o, acc_o_fast);
 
-        if (n_block > n_block_min) {
-            Tensor gV_next = gV;
-            gV_next.data() = gV_next.data() + (-int(kBlockN * params.v_row_stride));
-            if (use_v0) {
-                FLASH_DIM64_PREFETCH_V(sV1, gV_next);
-            } else {
-                FLASH_DIM64_PREFETCH_V(sV0, gV_next);
+            softmax_ref.template softmax_rescale_o</*Is_first=*/true,  /*Check_inf=*/Is_causal || Is_local>(
+                acc_s_ref, acc_o_ref, params.scale_softmax_log2);
+            Tensor rP_ref = flash::convert_type<Element>(acc_s_ref);
+
+            Tensor rP_fast = softmax_fast.template fast_softmax_rescale_o<Element, /*Is_first=*/true,  /*Check_inf=*/Is_causal || Is_local>(
+                acc_s_fast, acc_o_fast, params.scale_softmax_log2);
+
+            const Element *rP_ref_ptr = reinterpret_cast<const Element *>(rP_ref.data());
+            const Element *rP_fast_ptr = reinterpret_cast<const Element *>(rP_fast.data());
+            const int rP_numel = size(rP_ref);
+            float max_abs_diff = 0.f;
+            for (int i = 0; i < rP_numel; ++i) {
+                float diff = static_cast<float>(rP_ref_ptr[i]) - static_cast<float>(rP_fast_ptr[i]);
+                if (diff < 0.f) { diff = -diff; }
+                if (diff > max_abs_diff) { max_abs_diff = diff; }
             }
-            gV = gV_next;
+
+            const int row_count = size(softmax_ref.row_max);
+            const float ref_row_max0 = softmax_ref.row_max(0);
+            const float ref_row_sum0 = softmax_ref.row_sum(0);
+            const float fast_row_max0 = softmax_fast.row_max(0);
+            const float fast_row_sum0 = softmax_fast.row_sum(0);
+            const float ref_row_max1 = row_count > 1 ? softmax_ref.row_max(1) : 0.f;
+            const float ref_row_sum1 = row_count > 1 ? softmax_ref.row_sum(1) : 0.f;
+            const float fast_row_max1 = row_count > 1 ? softmax_fast.row_max(1) : 0.f;
+            const float fast_row_sum1 = row_count > 1 ? softmax_fast.row_sum(1) : 0.f;
+
+            printf(
+                "[dim64 fast softmax dbg] b=%d h=%d m=%d step=%d row0 ref(max=% .6f sum=% .6f) fast(max=% .6f sum=% .6f) "
+                "row1 ref(max=% .6f sum=% .6f) fast(max=% .6f sum=% .6f)\n",
+                bidb, bidh, m_block, masking_step,
+                ref_row_max0, ref_row_sum0, fast_row_max0, fast_row_sum0,
+                ref_row_max1, ref_row_sum1, fast_row_max1, fast_row_sum1
+            );
+            printf(
+                "[dim64 fast softmax dbg] ref0=% .9e fast0=% .9e ref1=% .9e fast1=% .9e ref2=% .9e fast2=% .9e ref3=% .9e fast3=% .9e max_abs_diff=% .9e\n",
+                static_cast<float>(rP_ref_ptr[0]), static_cast<float>(rP_fast_ptr[0]),
+                static_cast<float>(rP_ref_ptr[1]), static_cast<float>(rP_fast_ptr[1]),
+                static_cast<float>(rP_ref_ptr[2]), static_cast<float>(rP_fast_ptr[2]),
+                static_cast<float>(rP_ref_ptr[3]), static_cast<float>(rP_fast_ptr[3]),
+                max_abs_diff
+            );
         }
+
+        Tensor rP = masking_step == 0
+            ? softmax.template fast_softmax_rescale_o<Element, /*Is_first=*/true,  /*Check_inf=*/Is_causal || Is_local>(acc_s, acc_o, params.scale_softmax_log2)
+            : softmax.template fast_softmax_rescale_o<Element, /*Is_first=*/false, /*Check_inf=*/Is_causal || Is_local>(acc_s, acc_o, params.scale_softmax_log2);
 
         {   // dropout
             const int wave_id = (tidx >> 6);
@@ -3946,8 +3974,6 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
             }
         }
 
-        Tensor tOrVt = use_v0 ? tOrVt0 : tOrVt1;
-        Tensor tOsVt = use_v0 ? tOsVt0 : tOsVt1;
         asm volatile("s_waitcnt vmcnt(3) \n s_barrier");
         flash::gemm_k_rs_ds_read_m32x16_alt<0>(acc_o, rP, tOrVt, tOsVt, tiled_mma_for_gemm1, smem_tiled_copy_V, smem_thr_copy_V);
         asm volatile("s_waitcnt vmcnt(2) \n s_barrier");
@@ -3958,7 +3984,21 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
         flash::gemm_k_rs_ds_read_m32x16_alt<3>(acc_o, rP, tOrVt, tOsVt, tiled_mma_for_gemm1, smem_tiled_copy_V, smem_thr_copy_V);
         S_BARRIER;
 
-        use_v0 = !use_v0;
+        
+        if (n_block > n_block_min) {
+            gK.data() = gK.data() + (-int(kBlockN * params.k_row_stride));
+            gV.data() = gV.data() + (-int(kBlockN * params.v_row_stride));
+
+            lds_direct_copy<Is_even_K>(gK, sK, 0, params.k_row_stride, params.d);
+            lds_direct_copy<Is_even_K>(gK, sK, 1, params.k_row_stride, params.d);
+            
+
+            lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(gV, sV, 0, params.v_row_stride, params.d);
+            lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(gV, sV, 1, params.v_row_stride, params.d);
+            lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(gV, sV, 2, params.v_row_stride, params.d);
+            lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(gV, sV, 3, params.v_row_stride, params.d);
+
+        }
 
         if (n_masking_steps > 1 && n_block <= n_block_min) {
             --n_block;
@@ -3998,26 +4038,7 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
             );
         }
 
-        softmax.template softmax_rescale_o</*Is_first=*/false, /*Check_inf=*/ Is_local>(acc_s, acc_o, params.scale_softmax_log2);
-
-        Tensor rP = flash::convert_type<Element>(acc_s);
-
-        if (n_block > n_block_min) {
-            gK.data() = gK.data() + (-int(kBlockN * params.k_row_stride));
-            lds_direct_copy<Is_even_K>(gK, sK, 0, params.k_row_stride, params.d);
-            lds_direct_copy<Is_even_K>(gK, sK, 1, params.k_row_stride, params.d);
-        }
-
-        if (n_block > n_block_min) {
-            Tensor gV_next = gV;
-            gV_next.data() = gV_next.data() + (-int(kBlockN * params.v_row_stride));
-            if (use_v0) {
-                FLASH_DIM64_PREFETCH_V(sV1, gV_next);
-            } else {
-                FLASH_DIM64_PREFETCH_V(sV0, gV_next);
-            }
-            gV = gV_next;
-        }
+        Tensor rP = softmax.template fast_softmax_rescale_o<Element, /*Is_first=*/false, /*Check_inf=*/ Is_local>(acc_s, acc_o, params.scale_softmax_log2);
 
         {   // dropout
             const int wave_id = (tidx >> 6);
@@ -4057,8 +4078,6 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
             }
         }
 
-        Tensor tOrVt = use_v0 ? tOrVt0 : tOrVt1;
-        Tensor tOsVt = use_v0 ? tOsVt0 : tOsVt1;
         asm volatile("s_waitcnt vmcnt(3) \n s_barrier");
         flash::gemm_k_rs_ds_read_m32x16_alt<0>(acc_o, rP, tOrVt, tOsVt, tiled_mma_for_gemm1, smem_tiled_copy_V, smem_thr_copy_V);
         asm volatile("s_waitcnt vmcnt(2) \n s_barrier");
@@ -4069,10 +4088,22 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
         flash::gemm_k_rs_ds_read_m32x16_alt<3>(acc_o, rP, tOrVt, tOsVt, tiled_mma_for_gemm1, smem_tiled_copy_V, smem_thr_copy_V);
         S_BARRIER;
 
-        use_v0 = !use_v0;
-    }
+        
+        if (n_block > n_block_min) {
+            gK.data() = gK.data() + (-int(kBlockN * params.k_row_stride));
+            gV.data() = gV.data() + (-int(kBlockN * params.v_row_stride));
 
-#undef FLASH_DIM64_PREFETCH_V
+            lds_direct_copy<Is_even_K>(gK, sK, 0, params.k_row_stride, params.d);
+            lds_direct_copy<Is_even_K>(gK, sK, 1, params.k_row_stride, params.d);
+            
+
+            lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(gV, sV, 0, params.v_row_stride, params.d);
+            lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(gV, sV, 1, params.v_row_stride, params.d);
+            lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(gV, sV, 2, params.v_row_stride, params.d);
+            lds_direct_copy<Is_even_K, /*Is_even_MN=*/true, _16x64_64>(gV, sV, 3, params.v_row_stride, params.d);
+
+        }
+    }
 
     // ★ Attention Sinks: conditional normalize (direct global memory load) ★
     typename decltype(softmax)::TensorT lse;
@@ -4086,7 +4117,7 @@ inline __device__ void compute_attn_1rowblock_16x64_dim64_prefetch(const Params 
         lse = softmax.template normalize_softmax_lse_with_sinks<Is_dropout>(
             acc_o, tSrS_aux, params.scale_softmax, params.scale_softmax_log2, params.rp_dropout);
     } else {
-        lse = softmax.template normalize_softmax_lse<Is_dropout>(
+        lse = softmax.template fast_normalize_softmax_lse<Element, Is_dropout>(
             acc_o, params.scale_softmax, params.rp_dropout);
     }
 
