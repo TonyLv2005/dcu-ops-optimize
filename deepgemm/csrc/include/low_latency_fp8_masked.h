@@ -354,6 +354,7 @@ namespace DEEP_GEMM
               {
                 rA[(k - (PIPE_STAGE - 1)) % PIPE_STAGE].int_arr[0][r] = __shfl(rA[(k - (PIPE_STAGE - 1)) % PIPE_STAGE].int_arr[0][r], shfl_src_lane);
               }
+              __builtin_amdgcn_s_waitcnt(0x0200);
               for (int n = 0; n < N_REPEAT; ++n)
               {
                 rC[n] = mmac_(rA[(k - (PIPE_STAGE - 1)) % PIPE_STAGE].int8_arr[0], rB[(k - (PIPE_STAGE - 1)) % PIPE_STAGE][n].int8_arr[0], rC[n]);
@@ -365,10 +366,12 @@ namespace DEEP_GEMM
             for (int k = K_ITERS; k < K_ITERS + (PIPE_STAGE - 1); k++)
             {
 
+              __builtin_amdgcn_sched_barrier(0);
               for (int32_t r = 0; r < 4; ++r)
               {
                 rA[(k - (PIPE_STAGE - 1)) % PIPE_STAGE].int_arr[0][r] = __shfl(rA[(k - (PIPE_STAGE - 1)) % PIPE_STAGE].int_arr[0][r], shfl_src_lane);
               }
+              __builtin_amdgcn_s_waitcnt(0x0200);
               for (int n = 0; n < N_REPEAT; ++n)
               {
                 rC[n] = mmac_(rA[(k - (PIPE_STAGE - 1)) % PIPE_STAGE].int8_arr[0], rB[(k - (PIPE_STAGE - 1)) % PIPE_STAGE][n].int8_arr[0], rC[n]);
